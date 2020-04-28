@@ -17,7 +17,6 @@ volumes:
   nextcloud-db_data:
   nextcloud:
   nextcloud_config:
-  nextcloud_data:
   nextcloud_apps:
 
 ########################### SERVICES
@@ -283,17 +282,16 @@ services:
     environment:
       - PUID=$PUID
       - PGID=$PGID
-      - POSTGRES_ROOT_PASSWORD=$NEXTCLOUD_POSTGRES_ROOT_PASSWORD
       - POSTGRES_PASSWORD=$NEXTCLOUD_POSTGRES_PASSWORD
       - POSTGRES_DB=$NEXTCLOUD_POSTGRES_DATABASE
       - POSTGRES_USER=$NEXTCLOUD_POSTGRES_USER
 
-  # nextcloud-redis:
-  #   container_name: nextcloud-redis
-  #   image: redis:alpine
-  #   restart: always
-  #   networks:
-  #     - backend
+  nextcloud-redis:
+    container_name: nextcloud-redis
+    image: redis:alpine
+    restart: always
+    networks:
+      - backend
 
   nextcloud:
     container_name: nextcloud
@@ -315,15 +313,15 @@ services:
       - type: volume
         source: nextcloud_config
         target: /var/www/html/config
-      - type: volume
-        source: nextcloud_data
+      - type: bind
+        source: $USERDIR/docker/nextcloud/data/
         target: /var/www/html/data
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+      - REDIS_HOST=nextcloud-redis
       - POSTGRES_HOST=nextcloud-db
-      # - REDIS_HOST=nextcloud-redis
       - POSTGRES_PASSWORD=$NEXTCLOUD_POSTGRES_PASSWORD
       - POSTGRES_DB=$NEXTCLOUD_POSTGRES_DATABASE
       - POSTGRES_USER=$NEXTCLOUD_POSTGRES_USER
@@ -364,7 +362,7 @@ services:
     #   - db.env
     depends_on:
       - nextcloud-db
-      # - nextcloud-redis
+      - nextcloud-redis
 
 
   # nextcloud-web:
@@ -406,17 +404,23 @@ services:
   #     - "traefik.http.services.nextcloud-svc.loadbalancer.server.scheme=http"
   #     - "traefik.http.services.nextcloud-svc.loadbalancer.server.port=80"
 
-  # nextcloud-cron:
-  #   container_name: nextcloud-cron
-  #   image: nextcloud:apache
-  #   restart: always
-  #   networks:
-  #     - backend
-  #   volumes:
-  #     - type: volume
-  #       source: nextcloud
-  #       target: /var/www/html
-  #   entrypoint: /cron.sh
-  #   depends_on:
-  #     - nextcloud-db
-  #     # - nextcloud-redis
+  nextcloud-cron:
+    container_name: nextcloud-cron
+    image: nextcloud:apache
+    restart: always
+    networks:
+      - backend
+    volumes:
+      - type: volume
+        source: nextcloud
+        target: /var/www/html
+      - type: volume
+        source: nextcloud_config
+        target: /var/www/html/config
+    entrypoint: /cron.sh
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    depends_on:
+      - nextcloud-db
+      - nextcloud-redis

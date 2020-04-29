@@ -9,7 +9,7 @@ networks:
   default:
     driver: bridge
 
-########################### SERVICES
+########################### VOLUMES
 volumes:
   organizr_config:
   portainer_data:
@@ -22,7 +22,23 @@ volumes:
 ########################### SERVICES
 services:
   # All services / apps go below this line
-
+  ouroboros:
+    container_name: ouroboros
+    hostname: ouroboros
+    image: pyouroboros/ouroboros
+    environment:
+      - CLEANUP=true
+      - INTERVAL=300
+      - LOG_LEVEL=info
+      - SELF_UPDATE=true
+      - IGNORE=mongo influxdb postgres mariadb
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      
   # Traefik 2 - Reverse Proxy
   traefik:
     container_name: traefik
@@ -343,7 +359,7 @@ services:
       ########################### Entrypoint
       - "traefik.http.routers.nextcloud-https.entrypoints=https"
       ########################### Rules
-      - "traefik.http.routers.nextcloud-https.rule=Host(`nextcloud.$DOMAINNAME`, `nextcloud2.$DOMAINNAME`)"
+      - "traefik.http.routers.nextcloud-https.rule=Host(`nextcloud.$DOMAINNAME`)"
       ########################### TLS Settings
       - "traefik.http.routers.nextcloud-https.tls=true"
       - "traefik.http.routers.nextcloud-https.tls.certresolver=dns-cloudflare"
@@ -363,7 +379,6 @@ services:
     depends_on:
       - nextcloud-db
       - nextcloud-redis
-
 
   # nextcloud-web:
   #   container_name: nextcloud-web
@@ -415,8 +430,14 @@ services:
         source: nextcloud
         target: /var/www/html
       - type: volume
+        source: nextcloud_apps
+        target: /var/www/html/custom_apps
+      - type: volume
         source: nextcloud_config
         target: /var/www/html/config
+      - type: bind
+        source: $USERDIR/docker/nextcloud/data/
+        target: /var/www/html/data
     entrypoint: /cron.sh
     environment:
       - PUID=${PUID}

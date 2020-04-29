@@ -36,6 +36,8 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     restart: unless-stopped
+    networks:
+    - backend
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       
@@ -332,6 +334,9 @@ services:
       - type: bind
         source: $USERDIR/docker/nextcloud/data/
         target: /var/www/html/data
+      - type: bind
+        source: $USERDIR/docker/nextcloud/.htaccess
+        target: /var/www/html/.htaccess
     environment:
       - PUID=${PUID}
       - PGID=${PGID}

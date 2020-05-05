@@ -5,8 +5,10 @@
 
 **/.htpasswd
 **/acme.json
-.env
+**.env
 /portainer/*
+/librenms/librenms_db/*
+/librenms/rrd/*
 /nextcloud/data
 /nextcloud/*.php
 

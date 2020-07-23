@@ -29,6 +29,7 @@ volumes:
   netbox-redis-data:
     driver: local
 
+
 ########################### SERVICES
 services:
   # All services / apps go below this line
@@ -67,6 +68,9 @@ services:
       - --entryPoints.https.address=:443 # HTTPS
       - --entryPoints.api.address=:8888 # Dashboard/API
 
+      - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
+      - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAINNAME
+
         # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
       - --entrypoints.https.forwardedHeaders.trustedIPs=173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/12,172.64.0.0/13,131.0.72.0/22
 
@@ -74,8 +78,8 @@ services:
       - --api=true
       - --serversTransport.insecureSkipVerify=true
       - --log=true
-      #- --log.level=DEBUG # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
-      - --accessLog=true
+      # - --log.level=DEBUG # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      # - --accessLog=true
       - --accessLog.filePath=/traefik.log
       - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
       - --accessLog.filters.statusCodes=400-499
@@ -90,15 +94,17 @@ services:
 
       ########################### Additional Configuratino File Paths
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory.
-      #      - --providers.file.filename=/path/to/file # Load dynamic configuration from a file.
+      # - --providers.file.filename=/path/to/file # Load dynamic configuration from a file.
       - --providers.file.watch=true # Only works on top level files in the rules folder
 
       ########################### Certificate Resolution
-      #- --certificatesResolvers.dns-cloudflare.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
+      # - --certificatesResolvers.dns-cloudflare.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
+      - --certificatesResolvers.dns-cloudflare.acme.dnschallenge=true
+      - --certificatesResolvers.dns-cloudflare.acme.dnschallenge.provider=cloudflare
       - --certificatesResolvers.dns-cloudflare.acme.email=$CLOUDFLARE_EMAIL
       - --certificatesResolvers.dns-cloudflare.acme.storage=/acme.json
-      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.provider=cloudflare
-      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
+      - --certificatesResolvers.dns-cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.delayBeforeCheck=90 # To delay DNS check and reduce LE hitrate
     networks:
       t2_proxy:
         ipv4_address: 192.168.40.254 # You can specify a static IP
@@ -285,7 +291,7 @@ services:
       - PGID=$PGID
   nextcloud-redis:
     container_name: nextcloud-redis
-    image: redis:alpine
+    image: redis:5-alpine
     restart: always
     networks:
       - backend
@@ -308,9 +314,9 @@ services:
       - type: bind
         source: $USERDIR/docker/nextcloud/data/
         target: /var/www/html/data
-      - type: bind
-        source: $USERDIR/docker/nextcloud/.htaccess
-        target: /var/www/html/.htaccess
+      # - type: bind
+      #   source: $USERDIR/docker/nextcloud/.htaccess
+      #   target: /var/www/html/.htaccess
       - type: bind
         source: $USERDIR/docker/nextcloud/crontabs/www-data
         target: /var/spool/cron/crontabs/www-data
@@ -345,9 +351,9 @@ services:
       - type: bind
         source: $USERDIR/docker/nextcloud/data/
         target: /var/www/html/data
-      - type: bind
-        source: $USERDIR/docker/nextcloud/.htaccess
-        target: /var/www/html/.htaccess
+      # - type: bind
+      #   source: $USERDIR/docker/nextcloud/.htaccess
+      #   target: /var/www/html/.htaccess
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -380,11 +386,11 @@ services:
       - nextcloud-redis
 
   librenms_db:
-    image: mariadb:10.2
+    image: mariadb:latest
     container_name: librenms_db
     command:
       - "mysqld"
-      - "--sql-mode="
+      # - "--sql-mode="
       - "--innodb-file-per-table=1"
       - "--lower-case-table-names=0"
       - "--character-set-server=utf8"
@@ -394,11 +400,9 @@ services:
     networks:
       - backend
     env_file:
-      - librenms/.env
-      - librenms/librenms.env
-    environment:
-      - "TZ=${TZ}"
+      - $USERDIR/docker/librenms/librenms.env
     restart: always
+
   librenms_memcached:
     image: memcached:alpine
     container_name: librenms_memcached
@@ -407,6 +411,14 @@ services:
     environment:
       - "TZ=${TZ}"
     restart: always
+
+  librenms_redis:
+    image: redis:5.0-alpine
+    container_name: librenms_redis
+    environment:
+      - "TZ=${TZ}"
+    restart: always
+
   librenms_rrdcached:
     image: crazymax/rrdcached
     container_name: librenms_rrdcached
@@ -425,18 +437,14 @@ services:
       - "WRITE_THREADS=4"
       - "FLUSH_DEAD_DATA_INTERVAL=3600"
     restart: always
-  librenms_smtp:
-    image: juanluisbaptiste/postfix
-    container_name: librenms_smtp
-    networks:
-      - backend
-    environment:
-    #  - "TZ=${TZ}"
-      - "SERVER_HOSTNAME=librenms.dir.li"
-      - "SMTP_SERVER=${SMTP_HOST}"
-      - "SMTP_USERNAME=${SMTP_NAME}"
-      - "SMTP_PASSWORD=${SMTP_PASSWORD}"
+
+  librenms_msmtpd:
+    image: crazymax/msmtpd:latest
+    container_name: librenms_msmtpd
+    env_file:
+      - "$USERDIR/docker/librenms/msmtpd.env"
     restart: always
+
   librenms:
     image: librenms/librenms:latest
     container_name: librenms
@@ -446,21 +454,14 @@ services:
       - librenms_db
       - librenms_memcached
       - librenms_rrdcached
-      - librenms_smtp
+      - librenms_msmtpd
     volumes:
       - "/media/iscsi/librenms:/data"
-#      - "./librenms/syslog.php:/data/config/syslog.php"
     networks:
       - backend
       - t2_proxy
     env_file:
-      - .env
-      - librenms/.env
-      - librenms/librenms.env
-    # environment:
-    #   - "TZ=${TZ}"
-    #   - "PUID=${PUID}"
-    #   - "PGID=${PGID}"
+      - $USERDIR/docker/librenms/librenms.env
     restart: always
     labels:
       - "traefik.enable=true"
@@ -478,24 +479,25 @@ services:
       - "traefik.http.routers.librenms-https.service=librenms-svc"
       - "traefik.http.services.librenms-svc.loadbalancer.server.scheme=http"
       - "traefik.http.services.librenms-svc.loadbalancer.server.port=8000"
-  librenms_cron:
+
+  librenms_dispatcher:
     image: librenms/librenms:latest
-    container_name: librenms_cron
+    container_name: librenms_dispatcher
     domainname: dir.li
-    hostname: librenms
+    hostname: librenms_dispatcher
     depends_on:
       - librenms
+      - librenms_redis
     volumes:
       - "/media/iscsi/librenms:/data"
     networks:
       - backend
     env_file:
-      - .env
-      - librenms/.env
-      - librenms/librenms.env
+      - $USERDIR/docker/librenms/librenms.env
     environment:
-      # - "TZ=${TZ}"
-      # - "PUID=${PUID}"
-      # - "PGID=${PGID}"
-      - "SIDECAR_CRON=1"
+      - "DISPATCHER_NODE_ID=dispatcher1"
+      - "REDIS_HOST=librenms_redis"
+      - "REDIS_PORT=6379"
+      - "REDIS_DB=0"
+      - "SIDECAR_DISPATCHER=1"
     restart: always

@@ -59,8 +59,6 @@ services:
     restart: unless-stopped
     command: # CLI arguments
       # --configFile=$USERDIR/traefik2/traefik.toml
-
-      - --global.checkNewVersion=true
       - --global.sendAnonymousUsage=false
 
       ########################### Entrypoints
@@ -68,8 +66,8 @@ services:
       - --entryPoints.https.address=:443 # HTTPS
       - --entryPoints.api.address=:8888 # Dashboard/API
 
-      - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
-      - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAINNAME
+      # - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
+      # - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAINNAME
 
         # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
       - --entrypoints.https.forwardedHeaders.trustedIPs=173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/12,172.64.0.0/13,131.0.72.0/22
@@ -79,25 +77,36 @@ services:
       - --serversTransport.insecureSkipVerify=true
       - --log=true
       # - --log.level=DEBUG # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
-      # - --accessLog=true
+      - --accessLog=true
       - --accessLog.filePath=/traefik.log
       - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
       - --accessLog.filters.statusCodes=400-499
 
       ########################### Providers
+      ##################################### Docker
       - --providers.docker=true
+
+      # Docker server endpoint. Can be a tcp or a unix socket endpoint.
       - --providers.docker.endpoint=unix:///var/run/docker.sock
+
+      # For a given container if no routing rule was defined by a label, it is defined by this defaultRule instead.
       - --providers.docker.defaultrule=Host(`{{ index .Labels "com.docker.compose.service" }}.$DOMAINNAME`)
+
+      # Expose containers by default in Traefik.
+      # If set to false, containers that don't have a traefik.enable=true label will be ignored from the resulting routing configuration.
       - --providers.docker.exposedByDefault=false
+
+      # Defines a default docker network to use for connections to all containers.
       - --providers.docker.network=t2_proxy
       - --providers.docker.swarmMode=false
 
-      ########################### Additional Configuratino File Paths
+      ##################################### Additional Configuration File Paths
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory.
       # - --providers.file.filename=/path/to/file # Load dynamic configuration from a file.
       - --providers.file.watch=true # Only works on top level files in the rules folder
 
       ########################### Certificate Resolution
+      # Traefik requires you to define "Certificate Resolvers" in the static configuration, which are responsible for retrieving certificates from an ACME server.
       # - --certificatesResolvers.dns-cloudflare.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
       - --certificatesResolvers.dns-cloudflare.acme.dnschallenge=true
       - --certificatesResolvers.dns-cloudflare.acme.dnschallenge.provider=cloudflare
@@ -125,7 +134,10 @@ services:
         mode: host
     volumes:
       # Access to rules such as middleware
-      - $USERDIR/docker/traefik2/rules:/rules
+      - type: bind
+        source: $USERDIR/docker/traefik2/rules
+        target: /rules
+        read_only: true
       # Access to the docker API so it can listen to events
       - type: bind
         source: /var/run/docker.sock
@@ -330,7 +342,7 @@ services:
   nextcloud:
     container_name: nextcloud
     hostname: nextcloud
-    domainname: dir.li
+    domainname: ${DOMAINNAME}
     image: nextcloud:apache
     restart: always
     networks:
@@ -415,6 +427,8 @@ services:
   librenms_redis:
     image: redis:5.0-alpine
     container_name: librenms_redis
+    networks:
+      - backend
     environment:
       - "TZ=${TZ}"
     restart: always
@@ -441,6 +455,8 @@ services:
   librenms_msmtpd:
     image: crazymax/msmtpd:latest
     container_name: librenms_msmtpd
+    networks:
+      - t2_proxy
     env_file:
       - "$USERDIR/docker/librenms/msmtpd.env"
     restart: always
@@ -448,7 +464,7 @@ services:
   librenms:
     image: librenms/librenms:latest
     container_name: librenms
-    domainname: dir.li
+    domainname: ${DOMAINNAME}
     hostname: librenms
     depends_on:
       - librenms_db
@@ -483,7 +499,7 @@ services:
   librenms_dispatcher:
     image: librenms/librenms:latest
     container_name: librenms_dispatcher
-    domainname: dir.li
+    domainname: ${DOMAINNAME}
     hostname: librenms_dispatcher
     depends_on:
       - librenms

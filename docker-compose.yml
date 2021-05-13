@@ -281,7 +281,7 @@ services:
 
   nextcloud-db:
     container_name: nextcloud-db
-    image: postgres:alpine
+    image: postgres:12-alpine
     restart: always
     #command:
     #  - -c 'config_file=/etc/postgresql/postgresql.conf'
@@ -507,6 +507,7 @@ services:
     volumes:
       - "/media/iscsi/librenms:/data"
     networks:
+      - t2_proxy
       - backend
     env_file:
       - $USERDIR/docker/librenms/librenms.env

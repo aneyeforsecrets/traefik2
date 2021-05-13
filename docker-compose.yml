@@ -473,7 +473,7 @@ services:
       - librenms_msmtpd
     volumes:
       - "/media/iscsi/librenms:/data"
-      # - "./librenms/config:/data/config"
+      - "./librenms/config:/data/config"
     networks:
       - backend
       - t2_proxy

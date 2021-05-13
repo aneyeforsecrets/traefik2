@@ -473,6 +473,7 @@ services:
       - librenms_msmtpd
     volumes:
       - "/media/iscsi/librenms:/data"
+      # - "./librenms/config:/data/config"
     networks:
       - backend
       - t2_proxy
@@ -518,3 +519,34 @@ services:
       - "REDIS_DB=0"
       - "SIDECAR_DISPATCHER=1"
     restart: always
+
+  smokeping:
+    image: ghcr.io/linuxserver/smokeping
+    container_name: smokeping
+    domainname: ${DOMAINNAME}
+    hostname: smokeping
+    networks:
+      - t2_proxy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=true"
+      ########################### Entrypoint
+      - "traefik.http.routers.smokeping-rtr.entrypoints=https"
+      ########################### Rules
+      - "traefik.http.routers.smokeping-rtr.rule=Host(`smp01.odd.$DOMAINNAME`)"
+      ########################### TLS Settings
+      - "traefik.http.routers.smokeping-rtr.tls=true"
+      - "traefik.http.routers.smokeping-rtr.tls.certresolver=dns-cloudflare"
+      ########################### Middleware
+      - "traefik.http.routers.smokeping-rtr.middlewares=chain-no-auth@file" # No Authentication
+      ########################### Service
+      - "traefik.http.routers.smokeping-rtr.service=smokeping-svc"
+      - "traefik.http.services.smokeping-svc.loadbalancer.server.scheme=http"
+      - "traefik.http.services.smokeping-svc.loadbalancer.server.port=80"
+    volumes:
+      - ./smokeping/config:/config
+      - ./smokeping/data:/data
+    restart: unless-stopped

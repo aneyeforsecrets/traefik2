@@ -11,6 +11,7 @@
 /librenms/rrd/*
 /nextcloud/data
 /nextcloud/*.php
+/smokeping/data
 
 # User-specific files
 *.rsuser

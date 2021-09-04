@@ -3,7 +3,9 @@ version: "3.7"
 ########################### VOLUMES
 volumes:
   db:
-  app:
+  nextcloud:
+  apps:
+  config:
   data:
 
 services:
@@ -17,9 +19,12 @@ services:
         target: /var/lib/postgresql/data
     networks:
       - backend
+    environment:
+      - POSTGRES_DB_FILE=/run/secrets/postgres_db
+      - POSTGRES_USER_FILE=/run/secrets/postgres_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
     env_file:
       - ../shared/.env
-      - db.env
     secrets:
       - postgres_db
       - postgres_password
@@ -37,13 +42,24 @@ services:
     restart: always
     volumes:
       - type: volume
-        source: app
+        source: nextcloud
         target: /var/www/html
+      - type: volume
+        source: apps
+        target: /var/www/html/custom_apps
+      - type: volume
+        source: config
+        target: /var/www/html/config
       - type: volume
         source: data
         target: /var/www/html/data
     environment:
       - POSTGRES_HOST=db
+      - POSTGRES_DB_FILE=/run/secrets/postgres_db
+      - POSTGRES_USER_FILE=/run/secrets/postgres_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      - NEXTCLOUD_ADMIN_PASSWORD_FILE=/run/secrets/nextcloud_admin_password
+      - NEXTCLOUD_ADMIN_USER_FILE=/run/secrets/nextcloud_admin_user
       - REDIS_HOST=redis
       - APACHE_DISABLE_REWRITE_IP=1
       - TRUSTED_PROXIES=$TRUSTED_PROXIES
@@ -55,18 +71,23 @@ services:
       - SMTP_AUTHTYPE=LOGIN
     env_file:
       - ../shared/.env
-      - db.env
     depends_on: 
       - db
       - redis
     networks:
       - t2_proxy
       - backend
+    secrets:
+      - nextcloud_admin_user
+      - nextcloud_admin_password
+      - postgres_db
+      - postgres_password
+      - postgres_user
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=t2_proxy"
       - "traefik.http.routers.nextcloud-secure.entrypoints=websecure"
-      - "traefik.http.routers.nextcloud-secure.rule=Host(`nextcloud2.$SERVER_HOSTNAME`)"
+      - "traefik.http.routers.nextcloud-secure.rule=Host(`nextcloud2.$DOMAIN`)"
       - "traefik.http.routers.nextcloud-secure.service=nextcloud"
       - "traefik.http.services.nextcloud.loadbalancer.server.scheme=http"
       - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
@@ -77,8 +98,14 @@ services:
     restart: always
     volumes:
       - type: volume
-        source: app
+        source: nextcloud
         target: /var/www/html
+      - type: volume
+        source: apps
+        target: /var/www/html/custom_apps
+      - type: volume
+        source: config
+        target: /var/www/html/config
       - type: volume
         source: data
         target: /var/www/html/data

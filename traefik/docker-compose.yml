@@ -38,14 +38,10 @@ services:
       - type: bind
         source: ./data/traefik.yml
         target: /traefik.yml
-    environment: 
-      - CF_API_EMAIL="/run/secrets/cf_api_email"
-      - CF_API_KEY="/run/secrets/cf_api_key"
     env_file: 
       - ../shared/.env
+      - .env
     secrets:
-      - cf_api_email
-      - cf_api_key
       - basic_auth_user_file
     labels:
       - "traefik.enable=true"
@@ -56,10 +52,6 @@ services:
       - "traefik.http.routers.traefik-secure.middlewares=user-auth@file"
 
 secrets:
-  cf_api_email:
-    file: ./secrets/cf_api_email
-  cf_api_key:
-    file: ./secrets/cf_api_key
   basic_auth_user_file:
     file: ./secrets/basic_auth_user_file
 

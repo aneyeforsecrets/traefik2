@@ -21,10 +21,7 @@ This is primarily for private purposes, but it may help someone else set up some
 
 ## Help
 
-Any advise for common problems or issues.
-```
-command to run if program contains helper info
-```
+Feel free to get in touch if you run into issues.
 
 ## Authors
 

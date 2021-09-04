@@ -1,0 +1,55 @@
+version: "3.7"
+
+services:
+  traefik:
+    container_name: traefik
+    image: traefik # the chevrotin tag refers to v2.2.x
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      t2_proxy:
+        ipv4_address: 192.168.90.254 # You can specify a static IP
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    volumes:
+      # Access to rules such as middleware
+      - type: bind
+        source: ./data/configurations
+        target: /configurations
+        read_only: true
+      # Access to the docker API so it can listen to events
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      # Access to the acme.json file for Let's Encrypt
+      - type: bind
+        source: ./data/acme/acme.json
+        target: /acme.json
+      # Exposing the configuration file
+      - type: bind
+        source: ./data/traefik.yml
+        target: /traefik.yml
+    env_file: 
+      - ../shared/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=t2_proxy"
+      - "traefik.http.routers.traefik-secure.entrypoints=websecure"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.web01.dir.li`)"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare-http"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+      - "traefik.http.routers.traefik-secure.middlewares=user-auth@file"
+
+networks:
+  t2_proxy:
+    external: true

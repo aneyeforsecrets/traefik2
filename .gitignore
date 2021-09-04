@@ -6,11 +6,7 @@
 **/.htpasswd
 **/acme.json
 **.env
-/portainer/*
-/librenms/librenms_db/*
-/librenms/rrd/*
-/nextcloud/data
-/nextcloud/*.php
+/traefik/data/configurations/*
 
 # User-specific files
 *.rsuser

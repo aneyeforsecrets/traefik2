@@ -1,0 +1,39 @@
+version: "3.7"
+
+volumes:
+  portainer_data:
+
+services:
+ 
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    # command: -H unix:///var/run/docker.sock
+    networks:
+      - t2_proxy
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: volume
+        source: portainer_data
+        target: /data
+    env_file: 
+      - ../shared/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=t2_proxy"
+      - "traefik.http.routers.portainer-secure.entrypoints=websecure"
+      - "traefik.http.routers.portainer-secure.rule=Host(`portainer.web01.dir.li`)"
+      - "traefik.http.routers.portainer-secure.tls=true"
+      - "traefik.http.routers.portainer-secure.tls.certresolver=cloudflare-http"
+      - "traefik.http.routers.portainer-secure.service=portainer"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+networks:
+  t2_proxy:
+    external: true

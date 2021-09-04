@@ -1,0 +1,103 @@
+version: "3.7"
+
+########################### VOLUMES
+volumes:
+  db:
+  app:
+  data:
+
+services:
+  db:
+    container_name: db
+    image: postgres:12-alpine
+    restart: always
+    volumes:
+      - type: volume
+        source: db
+        target: /var/lib/postgresql/data
+    networks:
+      - backend
+    env_file:
+      - ../shared/.env
+      - db.env
+      
+  redis:
+    container_name: redis
+    image: redis:alpine
+    restart: always
+    networks:
+      - backend
+
+  app:
+    image: nextcloud:apache
+    restart: always
+    volumes:
+      - type: volume
+        source: app
+        target: /var/www/html
+      - type: volume
+        source: data
+        target: /var/www/html/data
+    env_file:
+      - ../shared/.env
+      - db.env
+      - .env
+    depends_on: 
+      - db
+      - redis
+    networks:
+      - t2_proxy
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=t2_proxy"
+      - "traefik.http.routers.nextcloud-secure.entrypoints=websecure"
+      - "traefik.http.routers.nextcloud-secure.rule=Host(`nextcloud.web01.dir.li`)"
+      - "traefik.http.routers.nextcloud-secure.tls=true"
+      - "traefik.http.routers.nextcloud-secure.tls.certresolver=cloudflare-http"
+      - "traefik.http.routers.nextcloud-secure.service=nextcloud"
+      - "traefik.http.services.nextcloud.loadbalancer.server.scheme=http"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+
+
+      # ##################### HTTPS
+      # ########################### Entrypoint
+      # - "traefik.http.routers.nextcloud-https.entrypoints=https"
+      # ########################### Rules
+      # - "traefik.http.routers.nextcloud-https.rule=Host(`nextcloud.$DOMAINNAME`)"
+      # ########################### TLS Settings
+      # - "traefik.http.routers.nextcloud-https.tls=true"
+      # - "traefik.http.routers.nextcloud-https.tls.certresolver=dns-cloudflare"
+      # ########################### Middleware
+      # - "traefik.http.routers.nextcloud-https.middlewares=nextcloud-caldav@docker,chain-no-auth@file"
+      # - "traefik.http.middlewares.nextcloud-caldav.redirectregex.permanent=true"
+      # - "traefik.http.middlewares.nextcloud-caldav.redirectregex.regex=^https://(.*)/.well-known/(card|cal)dav"
+      # - "traefik.http.middlewares.nextcloud-caldav.redirectregex.replacement=https://$${1}/remote.php/dav/"
+      # ########################### Service
+      # - "traefik.http.routers.nextcloud-https.service=nextcloud-svc"
+      # - "traefik.http.services.nextcloud-svc.loadbalancer.server.scheme=http"
+      # - "traefik.http.services.nextcloud-svc.loadbalancer.server.port=80"
+
+  cron:
+    container_name: cron
+    image: nextcloud:apache
+    restart: always
+    volumes:
+      - type: volume
+        source: app
+        target: /var/www/html
+    env_file:
+      - ../shared/.env
+      - db.env
+      - .env
+    networks:
+      - backend
+    entrypoint: /cron.sh
+    depends_on:
+      - db
+      - redis
+
+networks:
+  t2_proxy:
+    external: true
+  backend:

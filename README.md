@@ -17,7 +17,7 @@ This is primarily for private purposes, but it may help someone else set up some
 ### Installing
 
 * Cloning the repository and running `docker-compose up -d` on the desired apps should do the trick.
-* Folders should be owned by $user:docker to avoid permission issues.
+* Folders should be owned by `$user:docker` to avoid permission issues.
 
 ## Help
 

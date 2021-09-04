@@ -38,9 +38,11 @@ services:
       - type: bind
         source: ./data/traefik.yml
         target: /traefik.yml
+    environment: 
+      - CF_API_EMAIL="/run/secrets/cf_api_email"
+      - CF_API_KEY="/run/secrets/cf_api_key"
     env_file: 
       - ../shared/.env
-      - .env
     secrets:
       - cf_api_email
       - cf_api_key
@@ -49,7 +51,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=t2_proxy"
       - "traefik.http.routers.traefik-secure.entrypoints=websecure"
-      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.web01.dir.li`)"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.$SERVER_HOSTNAME`)"
       - "traefik.http.routers.traefik-secure.service=api@internal"
       - "traefik.http.routers.traefik-secure.middlewares=user-auth@file"
 

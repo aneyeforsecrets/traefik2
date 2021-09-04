@@ -8,14 +8,48 @@ entryPoints:
       redirections:
         entryPoint:
           to: websecure
+    forwardedHeaders:
+      trustedIPs:
+        - "173.245.48.0/20"
+        - "103.21.244.0/22"
+        - "103.22.200.0/22"
+        - "103.31.4.0/22"
+        - "141.101.64.0/18"
+        - "108.162.192.0/18"
+        - "190.93.240.0/20"
+        - "188.114.96.0/20"
+        - "197.234.240.0/22"
+        - "198.41.128.0/17"
+        - "162.158.0.0/15"
+        - "104.16.0.0/13"
+        - "104.24.0.0/14"
+        - "172.64.0.0/13"
+        - "131.0.72.0/22"
 
   websecure:
     address: :443
+    forwardedHeaders:
+      trustedIPs:
+        - "173.245.48.0/20"
+        - "103.21.244.0/22"
+        - "103.22.200.0/22"
+        - "103.31.4.0/22"
+        - "141.101.64.0/18"
+        - "108.162.192.0/18"
+        - "190.93.240.0/20"
+        - "188.114.96.0/20"
+        - "197.234.240.0/22"
+        - "198.41.128.0/17"
+        - "162.158.0.0/15"
+        - "104.16.0.0/13"
+        - "104.24.0.0/14"
+        - "172.64.0.0/13"
+        - "131.0.72.0/22"
     http:
       middlewares:
         - secureHeaders@file
       tls:
-        certResolver: letsencrypt
+        certResolver: cloudflare-dns
 
 providers:
   docker:
@@ -26,6 +60,63 @@ providers:
     watch: true
 
 certificatesResolvers:
+  cloudflare-dns:
+    # Enable ACME (Let's Encrypt): automatic SSL.
+    acme:
+
+      email: "d@irrgang.dev"
+      storage: "acme.json"
+
+      # CA server to use.
+      # Uncomment the line to use Let's Encrypt's staging server,
+      # leave commented to go to prod.
+      #
+      # Optional
+      # Default: "https://acme-v02.api.letsencrypt.org/directory"
+      #
+      # caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+
+      # Use a DNS-01 ACME challenge rather than HTTP-01 challenge.
+      # Note: mandatory for wildcard certificate generation.
+      #
+      # Optional
+      #
+      dnsChallenge:
+
+        # DNS provider used.
+        #
+        # Required
+        #
+        provider: cloudflare
+
+        # By default, the provider will verify the TXT DNS challenge record before letting ACME verify.
+        # If delayBeforeCheck is greater than zero, this check is delayed for the configured duration in seconds.
+        # Useful if internal networks block external DNS queries.
+        #
+        # Optional
+        # Default: 0
+        #
+        delayBeforeCheck: 90
+
+        # Use following DNS servers to resolve the FQDN authority.
+        #
+        # Optional
+        # Default: empty
+        #
+        resolvers:
+        - "1.1.1.1:53"
+        - "1.0.0.1:53"
+
+        # Disable the DNS propagation checks before notifying ACME that the DNS challenge is ready.
+        #
+        # NOT RECOMMENDED:
+        # Increase the risk of reaching Let's Encrypt's rate limits.
+        #
+        # Optional
+        # Default: false
+        #
+        # disablePropagationCheck: true
+
   cloudflare-http:
     # Enable ACME (Let's Encrypt): automatic SSL.
     acme:

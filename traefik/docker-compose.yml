@@ -40,15 +40,26 @@ services:
         target: /traefik.yml
     env_file: 
       - ../shared/.env
+      - .env
+    secrets:
+      - cf_api_email
+      - cf_api_key
+      - basic_auth_user_file
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=t2_proxy"
       - "traefik.http.routers.traefik-secure.entrypoints=websecure"
       - "traefik.http.routers.traefik-secure.rule=Host(`traefik.web01.dir.li`)"
-      - "traefik.http.routers.traefik-secure.tls=true"
-      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare-http"
       - "traefik.http.routers.traefik-secure.service=api@internal"
       - "traefik.http.routers.traefik-secure.middlewares=user-auth@file"
+
+secrets:
+  cf_api_email:
+    file: ./secrets/cf_api_email
+  cf_api_key:
+    file: ./secrets/cf_api_key
+  basic_auth_user_file:
+    file: ./secrets/basic_auth_user_file
 
 networks:
   t2_proxy:

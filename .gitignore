@@ -6,7 +6,7 @@
 **/.htpasswd
 **/acme.json
 **.env
-/traefik/data/configurations/*
+**/secrets/*
 
 # User-specific files
 *.rsuser

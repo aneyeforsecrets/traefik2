@@ -5,7 +5,7 @@
 
 **/.htpasswd
 **/acme.json
-**.env
+.env
 **/secrets/*
 
 # User-specific files
